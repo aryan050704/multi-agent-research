@@ -1,60 +1,55 @@
 # Multi-Agent Research Assistant
 
-A **Planner → Researcher → Summarizer** multi-agent pipeline that decomposes complex research questions into sub-tasks and synthesizes comprehensive answers.
+A small multi-agent pipeline I built to play around with agent orchestration. It splits a research question into sub-questions (Planner), answers each one (Researcher), and then merges everything into one final answer (Summarizer).
 
-## Architecture
+## How it works
 
 ```
 User Query
     │
     ▼
-┌─────────┐     Breaks query into 3-5 specific sub-questions
-│ PLANNER │
-└─────────┘
-    │ sub-questions
+PLANNER      -> breaks the question into 3-5 sub-questions
+    │
     ▼
-┌────────────┐   Researches each sub-question independently (with context passing)
-│ RESEARCHER │
-└────────────┘
-    │ findings
+RESEARCHER   -> answers each sub-question, carries forward context from the previous one
+    │
     ▼
-┌─────────────┐  Synthesizes all findings → structured final answer
-│  SUMMARIZER │
-└─────────────┘
+SUMMARIZER   -> combines all the findings into one structured answer
 ```
 
+Each agent is just a thin wrapper with its own system prompt — see `agents/`.
+
 ## Features
-- **3 specialized agents**: Planner, Researcher, Summarizer — each with a distinct system prompt
-- **Context passing**: each researcher result informs the next query
-- **Multi-provider**: Ollama (local), OpenAI, or demo mode (no API key needed)
-- **Streamlit UI** with live agent status, tabbed output (final answer / breakdown / log)
-- **Modular design**: swap out any agent independently
+- 3 agents (Planner, Researcher, Summarizer), each with a separate role/prompt
+- Context from each research step is passed into the next, so answers build on each other
+- Works with Ollama (local), OpenAI, or a no-API "demo" mode for testing the UI
+- Streamlit UI with live status updates while the agents are running, plus tabs for the final answer / breakdown / full log
 
-## Run Locally
+## Running it
 
-### Demo mode (no LLM required)
+Demo mode (no LLM needed, just to see the flow):
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
-# Select "demo" in the sidebar
+# pick "demo" in the sidebar
 ```
 
-### With Ollama (fully local)
+With Ollama:
 ```bash
 ollama pull llama3
 ollama serve
 streamlit run app.py
-# Select "ollama" in the sidebar
+# pick "ollama" in the sidebar
 ```
 
-### With OpenAI
+With OpenAI:
 ```bash
 export OPENAI_API_KEY="your-key"
 streamlit run app.py
-# Select "openai" in the sidebar
+# pick "openai" in the sidebar
 ```
 
-## Use as a Library
+## Using it as a library
 
 ```python
 from agents.orchestrator import Orchestrator
@@ -62,9 +57,14 @@ from agents.orchestrator import Orchestrator
 orc = Orchestrator(provider="ollama", model="llama3")
 session = orc.run("What are the key challenges in deploying LLMs in production?")
 
-print(session.sub_questions)    # ['What are the compute challenges?', ...]
-print(session.final_answer)     # synthesized answer
+print(session.sub_questions)
+print(session.final_answer)
 ```
 
-## Tech Stack
-`Python` `Streamlit` `Ollama` `OpenAI API` (optional)
+## Stack
+Python, Streamlit, Ollama, OpenAI API (optional)
+
+## Notes / things I'd improve
+- Researcher only carries forward the last 300 chars of context — works fine for short chains but loses detail on longer ones
+- No caching, so re-running the same query hits the LLM again every time
+- Demo mode is just canned text, useful for testing the UI without burning API calls
